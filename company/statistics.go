@@ -1,7 +1,7 @@
 package company
 
 import (
-	"progect_game/company/miners"
+	"progect-game/company/miners"
 	"sync/atomic"
 	"time"
 )

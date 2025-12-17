@@ -1,16 +1,19 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"progect_game/company"
-	"progect_game/company/equipment"
-	"progect_game/company/miners"
-	input_dto "progect_game/http/dto/input"
-	output_dto "progect_game/http/dto/output"
+	"progect-game/company"
+	"progect-game/company/equipment"
+	"progect-game/company/miners"
+	"progect-game/database"
+	input_dto "progect-game/http/dto/input"
+	output_dto "progect-game/http/dto/output"
+	"time"
 )
 
 type HTTPHeandlers struct {
@@ -148,6 +151,49 @@ func (h *HTTPHeandlers) HandleGetCompanyStatistics(w http.ResponseWriter, r *htt
 		http.Error(w, `{"error": "Company not initialized"}`, http.StatusInternalServerError)
 		return
 	}
+	if database.Redis != nil {
+		// Ключ для кеша
+		cacheKey := "company_stats"
+
+		// Пробуем получить из Redis
+		cached, err := database.Redis.Get(context.Background(), cacheKey).Result()
+		if err == nil {
+			// Нашли в кеше - отдаём
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(cached))
+			return
+		} else {
+			fmt.Printf("Не нашли в кеше: %v\n", err)
+
+		}
+	}
+
+	// 2. Вычисляем данные (как обычно)
+	response := map[string]interface{}{
+		"balance":      h.company.GetMoney(),
+		"total_earned": h.company.GetTotalEarned(),
+		"miners_count": h.company.GetMinerCount(),
+	}
+
+	jsonData, _ := json.Marshal(response)
+
+	// 3. Сохраняем в Redis если он подключен
+	if database.Redis != nil {
+		fmt.Println("Сохраняем в Redis...")
+		ctx := context.Background()
+		err := database.Redis.Set(ctx, "company_stats", jsonData, 30*time.Second).Err()
+		if err != nil {
+			fmt.Printf("Ошибка сохранения в Redis: %v\n", err)
+		} else {
+			fmt.Println("Сохранено в Redis на 30 секунд")
+		}
+
+	}
+
+	// 4. Отправляем ответ
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonData)
+
 	stats := h.company.GetStatistics()
 
 	statsDTO := output_dto.NewCompanyStatisticDTO(stats)
@@ -160,6 +206,7 @@ func (h *HTTPHeandlers) HandleGetCompanyStatistics(w http.ResponseWriter, r *htt
 	if _, err := w.Write(b); err != nil {
 		fmt.Println("failed to write HTTP response:", err)
 	}
+
 }
 
 // check о зарплатах майнеров
@@ -221,4 +268,57 @@ func (h *HTTPHeandlers) HandleCompleateGame(w http.ResponseWriter, r *http.Reque
 			fmt.Println("failed to close HTTP server:", err)
 		}
 	}()
+}
+
+func (h *HTTPHeandlers) SaveGame(w http.ResponseWriter, r *http.Request) {
+	// 1. Получаем ПОЛНОЕ состояние компании
+	state := h.company.GetState()
+
+	// 2. Сохраняем ВСЁ состояние
+	err := database.SaveState(state)
+	if err != nil {
+		http.Error(w, "Не удалось сохранить: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Отправляем ответ
+	response := map[string]interface{}{
+		"status": "saved",
+		"data": map[string]interface{}{
+			"money":        state.Money,
+			"total_earned": state.TotalEarned,
+			"miners_count": state.MinersCount,
+			"pickaxe":      state.Pickaxe,
+			"ventilation":  state.Ventilation,
+			"trolleys":     state.Trolleys,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// LoadGame - GET /api/load
+func (h *HTTPHeandlers) LoadGame(w http.ResponseWriter, r *http.Request) {
+	// 1. Загружаем состояние из БД
+	state, err := database.LoadState()
+	if err != nil {
+		http.Error(w, "Не удалось загрузить: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 2. Загружаем состояние в компанию
+	if err := h.company.SetState(state); err != nil {
+		http.Error(w, "Не удалось применить сохранение: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Отправляем ответ
+	response := map[string]interface{}{
+		"status": "loaded",
+		"data":   state,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

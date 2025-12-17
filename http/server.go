@@ -30,6 +30,11 @@ func (h *HTTPServer) Run() error {
 	router.Path("/company").Methods(http.MethodGet).HandlerFunc(h.handlers.HandleGetCompanyStatistics)
 	router.HandleFunc("/company/complete", h.handlers.HandleCompleateGame).Methods("POST")
 
+	//сохранить игру вручную
+	router.HandleFunc("/api/save", h.handlers.SaveGame).Methods("POST")
+	//когда игрок хочет загрузить сохранение
+	router.HandleFunc("/api/load", h.handlers.LoadGame).Methods("GET")
+
 	server := http.Server{
 		Addr:    ":9091",
 		Handler: router,

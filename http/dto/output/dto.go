@@ -1,9 +1,9 @@
 package output
 
 import (
-	"progect_game/company"
-	"progect_game/company/equipment"
-	"progect_game/company/miners"
+	"progect-game/company"
+	"progect-game/company/equipment"
+	"progect-game/company/miners"
 
 	"github.com/google/uuid"
 )

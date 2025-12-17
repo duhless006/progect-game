@@ -3,9 +3,9 @@ package company
 import (
 	"context"
 	"fmt"
-
-	"progect_game/company/equipment"
-	"progect_game/company/miners"
+	"progect-game/company/equipment"
+	"progect-game/company/miners"
+	"progect-game/models"
 
 	"sync"
 	"time"
@@ -20,18 +20,22 @@ type Company struct {
 	mu        sync.RWMutex
 	ctx       context.Context
 	cancel    context.CancelFunc
+
 	//------
 	statisctics *CompanyStatistics
 }
 
 func NewCompany(ctx context.Context) *Company {
+
 	ctx, cancel := context.WithCancel(ctx)
+
 	c := &Company{
-		incomeCh:    make(chan miners.Coal),
-		miners:      make(map[miners.MinerClass]map[uuid.UUID]miners.Miner),
-		equipment:   equipment.NewEquipment(),
-		ctx:         ctx,
-		cancel:      cancel,
+		incomeCh:  make(chan miners.Coal),
+		miners:    make(map[miners.MinerClass]map[uuid.UUID]miners.Miner),
+		equipment: equipment.NewEquipment(),
+		ctx:       ctx,
+		cancel:    cancel,
+
 		statisctics: NewCompanyStatistics(),
 	}
 
@@ -237,4 +241,79 @@ func (c *Company) baseIncome() {
 		}
 	}
 
+}
+
+// GetState возвращает текущее состояние компании
+func (c *Company) GetState() models.GameState {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	// Считаем общее количество шахтёров
+	totalMiners := 0
+	for _, minerMap := range c.miners {
+		totalMiners += len(minerMap)
+	}
+
+	return models.GameState{
+		CompanyID:   "default_company",
+		Money:       c.statisctics.balance.Load(),
+		TotalEarned: c.statisctics.totalEarned.Load(),
+		MinersCount: totalMiners,
+		Pickaxe:     c.equipment.PickaxesPurchased(),
+		Ventilation: c.equipment.VentilationPurchased(),
+		Trolleys:    c.equipment.TrolleysPurchased(),
+		CreatedAt:   time.Now(),
+	}
+}
+
+// SetState загружает состояние в компанию
+func (c *Company) SetState(state models.GameState) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Устанавливаем баланс
+	c.statisctics.balance.Store(state.Money)
+	c.statisctics.totalEarned.Store(state.TotalEarned)
+
+	// Устанавливаем оборудование
+	if state.Pickaxe && !c.equipment.PickaxesPurchased() {
+		c.equipment.BuyPickaxe()
+	}
+	if state.Ventilation && !c.equipment.VentilationPurchased() {
+		c.equipment.BuyVentilation()
+	}
+	if state.Trolleys && !c.equipment.TrolleysPurchased() {
+		c.equipment.BuyTrolleys()
+	}
+
+	// TODO: Восстановить шахтёров - это сложнее,
+	// так как у тебя есть логика найма с проверкой баланса
+
+	return nil
+}
+
+// GetMoney возвращает текущий баланс
+func (c *Company) GetMoney() int64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.statisctics.balance.Load()
+}
+
+// GetTotalEarned возвращает общий заработок
+func (c *Company) GetTotalEarned() int64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.statisctics.totalEarned.Load()
+}
+
+// GetMinerCount возвращает количество шахтёров
+func (c *Company) GetMinerCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	total := 0
+	for _, minerMap := range c.miners {
+		total += len(minerMap)
+	}
+	return total
 }

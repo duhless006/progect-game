@@ -1,0 +1,9 @@
+# .dockerignore
+.git
+.gitignore
+.env
+*.log
+vendor/
+tmp/
+coverage.out
+progect-game  # бинарник
