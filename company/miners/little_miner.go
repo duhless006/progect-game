@@ -48,7 +48,7 @@ func (l *LittleMiner) Run(ctx context.Context) <-chan Coal {
 
 	go func() {
 		defer close(coalChan)
-		defer fmt.Println("Шахтёр завершил работу")
+		defer fmt.Println("Шахтёр начал работу")
 		for {
 			select {
 			case <-ctx.Done():

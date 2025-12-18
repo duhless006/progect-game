@@ -143,8 +143,16 @@ curl -X POST http://localhost:9091/api/save
 
 # Ответ: {"status":"saved","data":{"money":1000,...}}
 
-# 2. Загрузить игру
+# Сохраните состояние через API
+curl -X POST http://localhost:9091/api/save
+
+# Проверьте таблицу снова
+docker-compose exec db psql -U user -d game -c "SELECT * FROM game_state;"
+
+# Загрузите состояние
 curl http://localhost:9091/api/load
+# проверка таблицы в конце игры
+docker-compose up db -d
 
 🧪 ТЕСТИРОВАНИЕ
 Запуск тестов
@@ -317,10 +325,28 @@ rate_limit:{ip} - ограничение запросов
 
 bash
 # Создать таблицу вручную
-docker-compose exec db psql -U user -d game -c "
-CREATE TABLE IF NOT EXISTS game_state (...)"
-❌ Проблема: Тесты не запускаются
-Решение: Установите зависимости:
+d# Подключитесь к PostgreSQL
+docker-compose exec db psql -U user -d postgres
+
+# Создайте базу данных если её нет
+CREATE DATABASE game;
+\c game
+
+# Создайте таблицу вручную
+CREATE TABLE game_state (
+    id SERIAL PRIMARY KEY,
+    company_id VARCHAR(100) DEFAULT 'default_company',
+    money BIGINT DEFAULT 0,
+    total_earned BIGINT DEFAULT 0,
+    miners_count INT DEFAULT 0,
+    pickaxe BOOLEAN DEFAULT false,
+    ventilation BOOLEAN DEFAULT false,
+    trolleys BOOLEAN DEFAULT false,
+    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+# Проверьте
+\dt
 
 bash
 go mod download
