@@ -45,6 +45,7 @@ func NewCompany(ctx context.Context) *Company {
 	return c
 }
 
+// HireMiner нанимаем наши чебуреков
 func (c *Company) HireMiner(minerClass miners.MinerClass) (miners.Miner, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -111,6 +112,7 @@ func (c *Company) HireMiner(minerClass miners.MinerClass) (miners.Miner, error) 
 	return miner, nil
 }
 
+// GetAllMiners посмотреть всех майнеров
 func (c *Company) GetAllMiners() map[miners.MinerClass]map[uuid.UUID]miners.Miner {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -126,6 +128,7 @@ func (c *Company) GetAllMiners() map[miners.MinerClass]map[uuid.UUID]miners.Mine
 	return tmp
 }
 
+// GetMinersByType посмотреть тип майнера
 func (c *Company) GetMinersByType(minerType miners.MinerClass) map[uuid.UUID]miners.Miner {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -146,6 +149,7 @@ func (c *Company) GetMinersByType(minerType miners.MinerClass) map[uuid.UUID]min
 	return tmp
 }
 
+// BuyEquipment- покупка оборудования
 func (c *Company) BuyEquipment(equipmentType equipment.EquipmentType) (equipment.Equipment, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -271,11 +275,9 @@ func (c *Company) SetState(state models.GameState) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Устанавливаем баланс
 	c.statisctics.balance.Store(state.Money)
 	c.statisctics.totalEarned.Store(state.TotalEarned)
 
-	// Устанавливаем оборудование
 	if state.Pickaxe && !c.equipment.PickaxesPurchased() {
 		c.equipment.BuyPickaxe()
 	}
@@ -285,9 +287,6 @@ func (c *Company) SetState(state models.GameState) error {
 	if state.Trolleys && !c.equipment.TrolleysPurchased() {
 		c.equipment.BuyTrolleys()
 	}
-
-	// TODO: Восстановить шахтёров - это сложнее,
-	// так как у тебя есть логика найма с проверкой баланса
 
 	return nil
 }

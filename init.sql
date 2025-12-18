@@ -1,4 +1,3 @@
--- init.sql - ЗАМЕНИ ВЕСЬ ФАЙЛ НА ЭТОТ:
 DROP TABLE IF EXISTS game_state;
 
 CREATE TABLE game_state (

@@ -24,8 +24,6 @@ type Equipment struct {
 
 	//вагонетки
 	trolleys bool
-
-	//costs map[EquipmentType]int64
 }
 
 func NewEquipment() Equipment {

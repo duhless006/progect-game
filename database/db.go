@@ -23,7 +23,7 @@ func Init() error {
 		return err
 	}
 
-	// Ждём пока БД запустится (до 30 секунд)
+	// Жду пока БД запустится 30 секунд
 	log.Println("Ждём запуска PostgreSQL...")
 	for i := 0; i < 30; i++ {
 		err = DB.Ping()
@@ -61,7 +61,6 @@ func SaveState(state models.GameState) error {
 	return err
 }
 
-// SaveMoney - с проверкой на nil
 func SaveMoney(money int) error {
 	if DB == nil {
 		log.Println("БД не подключена, пропускаем сохранение")
@@ -72,7 +71,6 @@ func SaveMoney(money int) error {
 	return err
 }
 
-// LoadMoney - с проверкой на nil
 func LoadState() (models.GameState, error) {
 	var state models.GameState
 
@@ -130,7 +128,6 @@ func CreateTablesIfNotExist() error {
 		return fmt.Errorf("БД не подключена")
 	}
 
-	// SQL для создания таблицы
 	query := `
         CREATE TABLE IF NOT EXISTS game_state (
             id SERIAL PRIMARY KEY,
@@ -145,7 +142,6 @@ func CreateTablesIfNotExist() error {
         );
     `
 
-	// Выполняем SQL
 	_, err := DB.Exec(query)
 	if err != nil {
 		log.Printf("Не удалось создать таблицу: %v", err)

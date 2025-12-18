@@ -31,7 +31,7 @@ func (heandler *HTTPHeandlers) SetCloseServerFunc(f func() error) {
 	heandler.closeServer = f
 }
 
-// создание нового майнера
+// HandleCreateNewMiner - создание нового чебурека
 func (h *HTTPHeandlers) HandleCreateNewMiner(w http.ResponseWriter, r *http.Request) {
 	var minerDTO input_dto.MinerDTO
 
@@ -65,7 +65,7 @@ func (h *HTTPHeandlers) HandleCreateNewMiner(w http.ResponseWriter, r *http.Requ
 
 }
 
-// вывод информации о нанятых майнерах
+// HandlerGetMiner - вывод информации о нанятых гасторбайтеров
 func (h *HTTPHeandlers) HandlerGetMiner(w http.ResponseWriter, r *http.Request) {
 	minerType := r.URL.Query().Get("type")
 	if minerType != "" {
@@ -94,7 +94,7 @@ func (h *HTTPHeandlers) HandlerGetMiner(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// покупка оборудования
+// HandleByeEquipment- покупка оборудования
 func (h *HTTPHeandlers) HandleByeEquipment(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -129,7 +129,7 @@ func (h *HTTPHeandlers) HandleByeEquipment(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// проверка купленного оборудования
+// HandleCheckEquipment - проверка купленного оборудования
 func (h *HTTPHeandlers) HandleCheckEquipment(w http.ResponseWriter, r *http.Request) {
 	minerType := h.company.GetEquipment()
 	minerDTO := output_dto.NewEquipmentDTO(minerType)
@@ -143,7 +143,7 @@ func (h *HTTPHeandlers) HandleCheckEquipment(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-// статистика компании
+// HandleGetCompanyStatistics - статистика компании
 func (h *HTTPHeandlers) HandleGetCompanyStatistics(w http.ResponseWriter, r *http.Request) {
 
 	if h.company == nil {
@@ -168,7 +168,7 @@ func (h *HTTPHeandlers) HandleGetCompanyStatistics(w http.ResponseWriter, r *htt
 		}
 	}
 
-	// 2. Вычисляем данные (как обычно)
+	//  вычисляем данные
 	response := map[string]interface{}{
 		"balance":      h.company.GetMoney(),
 		"total_earned": h.company.GetTotalEarned(),
@@ -177,7 +177,7 @@ func (h *HTTPHeandlers) HandleGetCompanyStatistics(w http.ResponseWriter, r *htt
 
 	jsonData, _ := json.Marshal(response)
 
-	// 3. Сохраняем в Redis если он подключен
+	// сохраняю в redis если он подключен
 	if database.Redis != nil {
 		fmt.Println("Сохраняем в Redis...")
 		ctx := context.Background()
@@ -190,7 +190,6 @@ func (h *HTTPHeandlers) HandleGetCompanyStatistics(w http.ResponseWriter, r *htt
 
 	}
 
-	// 4. Отправляем ответ
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 
@@ -209,7 +208,7 @@ func (h *HTTPHeandlers) HandleGetCompanyStatistics(w http.ResponseWriter, r *htt
 
 }
 
-// check о зарплатах майнеров
+// HandleGetMinerSalaries - зпшка гасторбайтеров
 func (h *HTTPHeandlers) HandleGetMinerSalaries(w http.ResponseWriter, r *http.Request) {
 	salariesOutputDto := output_dto.NewminersSalariesDTO(
 		miners.LittleMinerSalary,
@@ -225,7 +224,7 @@ func (h *HTTPHeandlers) HandleGetMinerSalaries(w http.ResponseWriter, r *http.Re
 	}
 }
 
-// инфо о стоимости оборудования
+// HandleGetEquipmentPrice - инфо о стоимости оборудования
 func (h *HTTPHeandlers) HandleGetEquipmentPrice(w http.ResponseWriter, r *http.Request) {
 	priceOutputDto := output_dto.NewEquipmntPriceDTO(
 		equipment.EquipmentPickaxeConst,
@@ -241,7 +240,7 @@ func (h *HTTPHeandlers) HandleGetEquipmentPrice(w http.ResponseWriter, r *http.R
 	}
 }
 
-// хендлер для завершения игры если условия игры выполнены
+// HandleCompleateGame -  для завершения игры если условия игры выполнены
 func (h *HTTPHeandlers) HandleCompleateGame(w http.ResponseWriter, r *http.Request) {
 	stats, err := h.company.FinishGame()
 	if err != nil {
@@ -270,18 +269,19 @@ func (h *HTTPHeandlers) HandleCompleateGame(w http.ResponseWriter, r *http.Reque
 	}()
 }
 
+// SaveGame - для сохранения в постмане
 func (h *HTTPHeandlers) SaveGame(w http.ResponseWriter, r *http.Request) {
-	// 1. Получаем ПОЛНОЕ состояние компании
+
 	state := h.company.GetState()
 
-	// 2. Сохраняем ВСЁ состояние
+	// сохраняем все состояние
 	err := database.SaveState(state)
 	if err != nil {
 		http.Error(w, "Не удалось сохранить: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 3. Отправляем ответ
+	// отправляю ответ
 	response := map[string]interface{}{
 		"status": "saved",
 		"data": map[string]interface{}{
@@ -298,22 +298,22 @@ func (h *HTTPHeandlers) SaveGame(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// LoadGame - GET /api/load
+// LoadGame - для постмана загрузка состояния игры
 func (h *HTTPHeandlers) LoadGame(w http.ResponseWriter, r *http.Request) {
-	// 1. Загружаем состояние из БД
+	//состояние из бд
 	state, err := database.LoadState()
 	if err != nil {
 		http.Error(w, "Не удалось загрузить: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 2. Загружаем состояние в компанию
+	//записываю состояние в компанию
 	if err := h.company.SetState(state); err != nil {
 		http.Error(w, "Не удалось применить сохранение: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 3. Отправляем ответ
+	//отправляю ответ
 	response := map[string]interface{}{
 		"status": "loaded",
 		"data":   state,

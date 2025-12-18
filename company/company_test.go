@@ -39,13 +39,12 @@ func TestGetState(t *testing.T) {
 
 		state := comp.GetState()
 
-		// Проверяем обязательные поля
 		assert.NotEmpty(t, state.CompanyID,
 			"CompanyID не должен быть пустым")
 		assert.Equal(t, "default_company", state.CompanyID,
 			"CompanyID должен быть 'default_company'")
 
-		// Проверяем что значения не отрицательные
+		//значения не отрицательные
 		assert.GreaterOrEqual(t, state.Money, int64(0))
 		assert.GreaterOrEqual(t, state.TotalEarned, int64(0))
 		assert.GreaterOrEqual(t, state.MinersCount, 0)
